@@ -1,5 +1,7 @@
 # PS/2 To Mac Plus Mouse Adapter
 
+![adapter.jpg](adapter.jpg)
+
 ## About
 This is a PS/2 to Mac Plus (or 128 or 512 or possibly Lisa) mouse adapter based on an ATtiny806 microcontroller. 
 
