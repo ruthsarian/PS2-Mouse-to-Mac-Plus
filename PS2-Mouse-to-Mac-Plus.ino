@@ -1,60 +1,46 @@
-/**
- * Using the PS2Mouse library available from
- *   http://github.com/kristopher/PS2-Mouse-Arduino/
- * Original by Kristopher Chambers <kristopher.chambers@gmail.com>
- * Updated by Jonathan Oxer <jon@oxer.com.au>
+/* PS2 Mouse to Mac Plus
  * 
- * Using code from Spark cssvb94
- *   https://github.com/cssvb94/AmigaUSBMouseJoystick
+ * This is code for an adapter that converts PS2 mouse signals to Mac Plus serial mouse.
+ * 
+ * This is a fork of glitterkitty's PS2 to Amiga project which can be found at at 
+ *   https://github.com/glitterkitty/Arduino-PS2-Mouse-to-Amiga-Adapter
  *   
+ * Which uses code from Spark cssvb9'4s USB mouse to Amiga adapter which can be found at
+ *   https://github.com/glitterkitty/Arduino-PS2-Mouse-to-Amiga-Adapter
  * 
+ * This project requires the PS2Mouse library available at
+ *   http://github.com/kristopher/PS2-Mouse-Arduino/
  * 
+ * This project is designed to be used with the ATtiny806. To compile and use this code 
+ * with the Arduino IDE for the ATtiny806 you will need to install megaTinyCore from SpenceKonde:
+ *   https://github.com/SpenceKonde/megaTinyCore
  * 
- * 
- * Data from PS2-Mouse:
- * 
- * data0[2:1:0]  ->  middle,right, left mousebutton
- * data1         ->  x from -127 to + 127   signed int
- * data2         ->  y from -127 to + 127   signed int
- * 
- * 
- * amiga mouse-port, looking at the amiga:
- * 
- * 9 PIN D-SUB MALE
- * 
- *   _________________________
- *   \                       /
- *    \  1   2   3   4   5  /
- *     \                   /
- *      \  6   7   8   9  /
- *       \_______________/
- * 
- * 1  V-pulse               
- * 2  H-pulse
- * 3  VQ-pulse
- * 4  HQ-pulse
- * 5  BUTTON 3 (Middle)
- * 6  BUTTON 1 (Lefl)
- * 7  +5V
- * 8  GND
- * 9  BUTTON 2 (Right)
- * 
- * 
- * 
- * 
- * 
+ * The PCB this project was designed for, along with a BOM for the PCB, is available through OSHPark at:
+ *   https://oshpark.com/shared_projects/cSaM9jY9
  */
-
- 
 
 #include <PS2Mouse.h>
 
-#define MOUSE_DATA  12
-#define MOUSE_CLOCK 11
+//#define SERIAL_DEBUG
+
+// pins from mac-port to arduino 
+// https://deskthority.net/wiki/Bus_mouse
+//
+#define V_PULSE     PIN_PC3    // A:1  M:9 (Y1)       18
+#define VQ_PLSE     PIN_PC1    // A:3  M:8 (Y2)       16
+#define H_PULSE     PIN_PC2    // A:2  M:4 (X1)       17
+#define HQ_PLSE     PIN_PA1    // A:4  M:5 (X2)       20
+
+#define LMB         PIN_PC0    // A:6  M:7 (SW-)      15
+#define RMB         PIN_PB0    // A:9  M:7 (unused)   14
+#define MMB         PIN_PB1    // A:5  M:7 (unused)   13
+
+#define MOUSE_DATA  PIN_PB5
+#define MOUSE_CLOCK PIN_PB4
+
+#define ADELAY      150
 
 PS2Mouse mouse(MOUSE_CLOCK, MOUSE_DATA, STREAM);
-
-
 
 // quadrature encoding used by the amiga mouse protocol
 //
@@ -69,248 +55,201 @@ uint8_t YSTEPS;
 uint8_t XSIGN;
 uint8_t YSIGN;
 
-
-
-#define ADELAY  150
-
-
-
-// pins from amiga-port to arduino 
-//
-#define V_PULSE  2
-#define H_PULSE  3
-#define VQ_PLSE  4
-#define HQ_PLSE  5
-
-#define LMB      6
-#define RMB      7
-#define MMB      8
-
-
-
 // MB handling
 //
 void LeftButtonUp() {
-    digitalWrite(LMB, HIGH);
+  #ifdef SERIAL_DEBUG
+    Serial.println("LeftButtonUp()");
+  #endif
+  digitalWrite(LMB, HIGH);
 }
 void LeftButtonDown() {
-    digitalWrite(LMB, LOW);
+  #ifdef SERIAL_DEBUG
+    Serial.println("LeftButtonDown()");
+  #endif
+  digitalWrite(LMB, LOW);
 }
-
 void RightButtonUp() {
-    digitalWrite(RMB, HIGH);
+  #ifdef SERIAL_DEBUG
+    Serial.println("RightButtonUp()");
+  #endif
+  digitalWrite(RMB, HIGH);
 }
 void RightButtonDown() {
-    digitalWrite(RMB, LOW);
+  #ifdef SERIAL_DEBUG
+    Serial.println("RightButtonDown()");
+  #endif
+  digitalWrite(RMB, LOW);
 }
-
 void MiddleButtonUp() {
-    digitalWrite(MMB, HIGH);
+  #ifdef SERIAL_DEBUG
+    Serial.println("MiddleButtonUp()");
+  #endif
+  digitalWrite(MMB, HIGH);
 }
 void MiddleButtonDown() {
-    digitalWrite(MMB, LOW);
+  #ifdef SERIAL_DEBUG
+    Serial.println("MiddleButtonDown()");
+  #endif
+  digitalWrite(MMB, LOW);
 }
-
-
 
 // x/y handling
 //
-void AMIGAHorizontalMove() {
-  
-    // set bits acc. to curr. position in quadr. sequence
-    digitalWrite(H_PULSE, H[QX]);
-    digitalWrite(HQ_PLSE, HQ[QX]);
+void MOUSEHorizontalMove() {
+  // set bits acc. to curr. position in quadr. sequence
+  digitalWrite(H_PULSE, H[QX]);
+  digitalWrite(HQ_PLSE, HQ[QX]);
 
-    delayMicroseconds(ADELAY);
+  delayMicroseconds(ADELAY);
 }
 
+void MOUSEVerticalMove() {
+  digitalWrite(V_PULSE, H[QY]);
+  digitalWrite(VQ_PLSE, HQ[QY]);
 
-void AMIGAVerticalMove() {
-  
-    digitalWrite(V_PULSE, H[QY]);
-    digitalWrite(VQ_PLSE, HQ[QY]);
-    
-    delayMicroseconds(ADELAY);
+  delayMicroseconds(ADELAY);
 }
 
+void MOUSE_Left() {
+  #ifdef SERIAL_DEBUG
+    Serial.print("<");
+  #endif
 
-void AMIGA_Left() {
-    
-    // do a move by setting the port
-    AMIGAHorizontalMove();
+  // do a move by setting the port
+  MOUSEHorizontalMove();
 
-    // advance in the quadr. sequence
-    QX = (QX >= 3) ? 0 : ++QX;
-    
+  // advance in the quadr. sequence
+  QX = (QX >= 3) ? 0 : QX + 1;
 }
 
-void AMIGA_Right() {
-    AMIGAHorizontalMove();
-    QX = (QX <= 0) ? 3 : --QX;
+void MOUSE_Right() {
+  #ifdef SERIAL_DEBUG
+    Serial.print(">");
+  #endif
+  MOUSEHorizontalMove();
+  QX = (QX <= 0) ? 3 : QX - 1;
 }
 
-void AMIGA_Down() {
-    AMIGAVerticalMove();
-    QY = QY <= 0 ? 3 : --QY;
+void MOUSE_Down() {
+  #ifdef SERIAL_DEBUG
+    Serial.print("_");
+  #endif
+  MOUSEVerticalMove();
+  QY = QY <= 0 ? 3 : QY - 1;
 }
 
-void AMIGA_Up() {
-    AMIGAVerticalMove();
-    QY = QY >= 3 ? 0 : ++QY;
+void MOUSE_Up() {
+  #ifdef SERIAL_DEBUG
+    Serial.print("^");
+  #endif
+  MOUSEVerticalMove();
+  QY = QY >= 3 ? 0 : QY + 1;
 }
-
-
-
 
 void setup() {
-    
-    Serial.begin(57600);
 
+  #ifdef SERIAL_DEBUG
+    // give me some time to attach the pogo adapter before you start
+    delay(2000);
 
-    // init ps2 connection
-    mouse.initialize();
+    // initialize serial debug
+    Serial.begin(115200);
+    Serial.println("Hi, I'm a PS2 mouse adapter! \nConnect");
+  #endif
+
+  // i have found through trial-and-error that a delay is needed prior to mouse initialization
+  delay(1000);
+
+  // init ps2 connection
+  mouse.initialize();
+
+  // Set button and quadrature output pins to output
+  pinMode(V_PULSE, OUTPUT);  // V-Pulse
+  pinMode(H_PULSE, OUTPUT);  // H-Pulse
+  pinMode(VQ_PLSE, OUTPUT);  // VQ-pulse
+  pinMode(HQ_PLSE, OUTPUT);  // HQ-pulse
+  pinMode(LMB, OUTPUT);  // LMB
+  pinMode(RMB, OUTPUT);  // RMB
+  pinMode(MMB, OUTPUT);  // MMB
+
+  // Set quadrature output pins to zero
+  digitalWrite(V_PULSE, LOW);
+  digitalWrite(H_PULSE, LOW);
+  digitalWrite(VQ_PLSE, LOW);
+  digitalWrite(HQ_PLSE, LOW);
+
+  // Set mouse button output pins to on, coz they are inverted
+  digitalWrite(LMB, HIGH);
+  digitalWrite(RMB, HIGH);
+  digitalWrite(MMB, HIGH);
   
-    // tell me sth. 'bout you...
-    Serial.println("Hi, I'm a PS2 to amiga mouse adapter! \nConnect");
-    
-    Serial.print("PS2 Data:       D");
-    Serial.println(MOUSE_DATA);
-    
-    Serial.print("PS2 Clock:      D");
-    Serial.println(MOUSE_CLOCK);
-    
-
-    Serial.print("Amiga V_PULSE:  D");
-    Serial.println(V_PULSE);
-    
-    Serial.print("Amiga H_PULSE:  D");
-    Serial.println(H_PULSE);
-    
-    Serial.print("Amiga VQ_PLSE:  D");
-    Serial.println(VQ_PLSE);
-    
-    Serial.print("Amiga HQ_PLSE:  D");
-    Serial.println(HQ_PLSE);
-
-
-    Serial.print("Amiga Left MB:  D");
-    Serial.println(LMB);
-
-    Serial.print("Amiga Right MB: D");
-    Serial.println(RMB);
-
-    Serial.print("Amiga MB 3:     D");
-    Serial.println(MMB);
-
-    Serial.print("Amiga 5V:       5V");
-    Serial.println();
-
-    Serial.print("Amiga GND :     GND");
-    Serial.println();
-
-
-    
-
-    
-    
-    // Set button and quadrature output pins to output
-    pinMode(V_PULSE, OUTPUT);  // V-Pulse
-    pinMode(H_PULSE, OUTPUT);  // H-Pulse
-    pinMode(VQ_PLSE, OUTPUT);  // VQ-pulse
-    pinMode(HQ_PLSE, OUTPUT);  // HQ-pulse
-    pinMode(LMB, OUTPUT);  // LMB
-    pinMode(RMB, OUTPUT);  // RMB
-    pinMode(MMB, OUTPUT);  // MMB
-    
-        
-    // Set quadrature output pins to zero
-    digitalWrite(V_PULSE, LOW);
-    digitalWrite(H_PULSE, LOW);
-    digitalWrite(VQ_PLSE, LOW);
-    digitalWrite(HQ_PLSE, LOW);
-    
-    
-    // Set mouse button output pins to on, coz they are inverted
-    digitalWrite(LMB, HIGH);
-    digitalWrite(RMB, HIGH);
-    digitalWrite(MMB, HIGH);
-    
-    delay(200);
+  delay(500);
 }
-
-
-
 
 void loop() {
 
-    
-    // get data from mouse
-    //
-    int16_t data[3];
-    mouse.report(data);
+  static int16_t data[3] = {0, 0, 0};
+  static int16_t last_data[3] = {0, 0, 0};
 
-    
+  // get data from mouse
+  mouse.report(data);
 
-    // handle buttons
-    //
-    if( data[0] & 1) 
+  // handle buttons
+  if ((data[0] & 1) != (last_data[0] & 1)) {
+    if (data[0] & 1) 
       LeftButtonDown();
     else
       LeftButtonUp();
-      
-    if( data[0] & 2) 
+  }
+
+  if ((data[0] & 2) != (last_data[0] & 2)) {
+    if (data[0] & 2) 
       RightButtonDown();
     else
       RightButtonUp();
-      
-    if( data[0] & 4) 
+  }
+
+  if ((data[0] & 4) != (last_data[0] & 4)) {
+    if (data[0] & 4) 
       MiddleButtonDown();
     else
       MiddleButtonUp();
+  }
 
+  // calc x/y movement
+  XSTEPS = abs(data[1]);
+  YSTEPS = abs(data[2]);
+  XSIGN = (data[1] > 0 ? 1 : 0) ;
+  YSIGN = (data[2] > 0 ? 1 : 0) ;
 
+  // handle x/y movement 
+  while ((XSTEPS | YSTEPS) != 0) {
 
-
-    // calc x/y movement
-    //
-    XSTEPS = abs(data[1]);
-    YSTEPS = abs(data[2]);
-    XSIGN = (data[1] > 0 ? 1 : 0) ;
-    YSIGN = (data[2] > 0 ? 1 : 0) ;
-
-
+    // steps left?
+    if (XSTEPS != 0) {
     
-    // handle x/y movement 
-    //
-    while ((XSTEPS | YSTEPS) != 0) {
+      // direction
+      if (XSIGN)
+        MOUSE_Right();
+      else
+        MOUSE_Left();
 
-        // steps left?
-        if (XSTEPS != 0) {
-          
-            // direction
-            if (XSIGN)
-                AMIGA_Right();
-            else
-                AMIGA_Left();
+      // decrease steps    
+      XSTEPS--;
+    }
 
-            // decrease steps    
-            XSTEPS--;
-        }
+    if (YSTEPS != 0) {
 
-        
-        if (YSTEPS != 0) {
-            if (YSIGN)
-                AMIGA_Up(); 
-            else
-               AMIGA_Down();
-            YSTEPS--;
-        }
-        
-    }    
+      if (YSIGN)
+        MOUSE_Up(); 
+      else
+        MOUSE_Down();
+      YSTEPS--;
+    }
+  }
+
+  last_data[0] = data[0];
+  last_data[1] = data[1];
+  last_data[2] = data[2];
 }
-
-
-
-
-
-
