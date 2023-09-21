@@ -8,7 +8,7 @@ This is a PS/2 to Mac Plus (or 128 or 512 or possibly Lisa) mouse adapter based 
 This sketch is a fork of [glitterkitty's Arduino-PS2-Mouse-to-Amiga-Adapter](https://github.com/glitterkitty/Arduino-PS2-Mouse-to-Amiga-Adapter). I've just modified this project to work with the [ATtin806](https://www.microchip.com/en-us/product/attiny806) using the Mac Plus mouse port DB9 pinout. 
 
 ## Hardware
-The PCB is available [through OSHPark](https://oshpark.com/shared_projects/Ghm76ref). You can order a copy of the PCB through OSHPark or download the gerber files and order the PCB from some other location. The BOM is provided in the project description of the project on OSHPark. The ISP header on the PCB follows the [standard UPDI pinout](https://onlinedocs.microchip.com/pr/GUID-DDB0017E-84E3-4E77-AAE9-7AC4290E5E8B-en-US-4/index.html?GUID-9B349315-2842-4189-B88C-49F4E1055D7F), but includes the RX (pin 4) and TX (pin 5) of the 806's USART port allowing for serial debugging if needed. 
+The PCB is available [through OSHPark](https://oshpark.com/shared_projects/Ghm76ref). You can order a copy of the PCB through OSHPark or download the gerber files and order the PCB from some other manufacturer. The BOM is provided in the project description of the project on OSHPark. The ISP header on the PCB follows the [standard UPDI pinout](https://onlinedocs.microchip.com/pr/GUID-DDB0017E-84E3-4E77-AAE9-7AC4290E5E8B-en-US-4/index.html?GUID-9B349315-2842-4189-B88C-49F4E1055D7F), but includes the RX (pin 4) and TX (pin 5) of the 806's USART port allowing for serial debugging if needed. 
 
 ## Compiling & Programming
 
